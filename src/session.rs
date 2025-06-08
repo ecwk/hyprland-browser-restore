@@ -1,9 +1,9 @@
 use std::fs;
 use std::fs::OpenOptions;
-use std::io::{prelude::*};
+use std::io::{BufReader, prelude::*};
 use std::process::{Command, Stdio};
 
-use hyprland::data::{Clients};
+use hyprland::data::Clients;
 use hyprland::prelude::*;
 
 pub fn is_browser_running(process_name: &str) -> bool {
@@ -44,7 +44,7 @@ pub fn save_session(path: &str) {
         session_file
             .write(
                 format!(
-                    "windowrule = monitor {}, title:{}\n",
+                    "windowrule monitor {}, title:\"{}\"\n",
                     client.monitor, client.title
                 )
                 .as_bytes(),
@@ -53,7 +53,7 @@ pub fn save_session(path: &str) {
         session_file
             .write(
                 format!(
-                    "windowrule = workspace {}, title:{}\n",
+                    "windowrule workspace {}, title:\"{}\"\n",
                     client.workspace.id, client.title
                 )
                 .as_bytes(),
@@ -63,11 +63,21 @@ pub fn save_session(path: &str) {
 }
 
 pub fn load_session(path: &str) {
-    let hyprctl = Command::new("hyprctl")
-        .args(["keyword", "source", path])
-        .stdout(Stdio::null())
-        .status()
-        .unwrap();
+    let session_file = OpenOptions::new().read(true).open(path).unwrap();
+    let reader = BufReader::new(session_file);
 
-    assert_eq!(hyprctl.success(), true);
+    for line in reader.lines() {
+        let line = line.unwrap();
+
+        let hyprctl = Command::new("hyprctl")
+            // `hyprctl source` works too, but, it causes an expected behaviour where certain modifier key holds are reset. For
+            // example, holding `ctrl-u` to scroll will cause `u `to be pressed instead when `hyprctl
+            // source` is ran.
+            .args(["keyword", &line])
+            .stdout(Stdio::null())
+            .status()
+            .unwrap();
+
+        assert_eq!(hyprctl.success(), true);
+    }
 }

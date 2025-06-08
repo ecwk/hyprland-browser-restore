@@ -1,4 +1,4 @@
-use std::{env, thread, time};
+use std::{env, fs, thread, time};
 
 use clap::Parser;
 use hyprland::shared::*;
@@ -18,18 +18,17 @@ fn main() -> hyprland::Result<()> {
     let path = args
         .path
         .unwrap_or(env::var("XDG_STATE_HOME").unwrap() + "/hyprland-chrome-restore");
-    load_session(&path);
+    if fs::exists(&path).unwrap() {
+        load_session(&path);
+    }
 
     loop {
-        if !is_browser_running("chrome") {
-            println!("Browser not running.\nContinuing...");
-        } else {
-            println!("Browser running.");
+        if is_browser_running("chrome") {
             create_session(&path);
             save_session(&path);
             load_session(&path);
         }
 
-        thread::sleep(time::Duration::from_secs(5))
+        thread::sleep(time::Duration::from_secs(1))
     }
 }
